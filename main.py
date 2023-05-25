@@ -7,6 +7,22 @@ from sklearn.model_selection import train_test_split
 ratings_data = pd.read_csv('ratings.csv')
 movies_data = pd.read_csv('movies.csv')
 
+USERID = 999999
+
+# prompt the user to rate 5 random movies from movies_data and save those ratings into a DataFrame
+user_ratings = pd.DataFrame(columns=['userId', 'movieId', 'rating'])
+for _ in range(5):
+    movie_id = np.random.choice(movies_data['movieId'].unique())
+    # display movie title
+    title = movies_data[movies_data['movieId'] == movie_id]['title'].values[0]
+    genres = movies_data[movies_data['movieId'] == movie_id]['genres'].values[0]
+    print(f"Please rate the movie '{title}' [{genres}]: ")
+    rating = float(input())
+    user_ratings = pd.concat([user_ratings, pd.DataFrame([{'userId': USERID, 'movieId': movie_id, 'rating': rating}])], ignore_index=True)
+
+# append the user ratings to the ratings_data DataFrame
+ratings_data = pd.concat([ratings_data, user_ratings], ignore_index=True)
+
 # Data preprocessing
 user_mapping = {id: i for i, id in enumerate(ratings_data['userId'].unique())}
 reverse_user_mapping = {v: k for k, v in user_mapping.items()}
@@ -50,13 +66,7 @@ model.fit([train_data['userId'], train_data['movieId']], train_data['rating'], e
 # Make predictions on test data
 predictions = model.predict([test_data['userId'], test_data['movieId']])
 
-# Print recommendations for each user
-user_id = int(input("Type in the userId: "))
-
-if user_id not in user_mapping:
-    raise ValueError("User doesnt exist")
-
-user_id = user_mapping[user_id]
+user_id = user_mapping[USERID]
 
 user_ratings = test_data[test_data['userId'] == user_id]
 unrated_movies = movies_data[~movies_data['movieId'].isin(user_ratings['movieId'])]
@@ -88,7 +98,7 @@ for _, movie in recommendations.head(5).iterrows():
     movie_id = movie['movieId']
     if movie_id in reverse_movie_mapping:
         print(
-            f"Movie ID: {reverse_movie_mapping[movie_id]} - Title: {movie['title']} - Predicted Rating: {movie['predicted_rating']}")
+            f"Movie ID: {reverse_movie_mapping[movie_id]} - Title: {movie['title']} - Genres: {movie['genres']} - Predicted Rating: {movie['predicted_rating']}")
     else:
         print(
-            f"Movie ID: {movie_id} - Title: {movie['title']} - Predicted Rating: {movie['predicted_rating']} (Movie ID not found in mapping)")
+            f"Movie ID: {movie_id} - Title: {movie['title']} - Genres: {movie['genres']} - Predicted Rating: {movie['predicted_rating']} (Movie ID not found in mapping)")
