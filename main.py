@@ -6,11 +6,13 @@ from sklearn.model_selection import train_test_split
 # CONSTANT USERID
 USERID = 999999
 
+
 def load_data():
     # Load the MovieLens dataset into DataFrames
     ratings_data = pd.read_csv('ratings.csv')
     movies_data = pd.read_csv('movies.csv')
     return ratings_data, movies_data
+
 
 def prompt_user(movies_data, ratings_data):
     # prompt the user to rate 5 random movies from movies_data and save those ratings into a DataFrame
@@ -29,6 +31,7 @@ def prompt_user(movies_data, ratings_data):
 
     return ratings_data
 
+
 def preprocess_data(ratings_data):
     # Data preprocessing
     user_mapping = {id: i for i, id in enumerate(ratings_data['userId'].unique())}
@@ -40,14 +43,17 @@ def preprocess_data(ratings_data):
 
     return ratings_data, user_mapping, reverse_user_mapping, movie_mapping, reverse_movie_mapping
 
+
 def train(model, train_data):
     # Train the model
     model.fit([train_data['userId'], train_data['movieId']], train_data['rating'], epochs=10, batch_size=64)
+
 
 def evaluate(model, test_data):
     # Evaluate the model and print the loss and accuracy values
     loss, accuracy = model.evaluate([test_data['userId'], test_data['movieId']], test_data['rating'])
     print(f"Loss: {loss}, accuracy: {accuracy}")
+
 
 def recommend(test_data, user_mapping, reverse_user_mapping, movie_mapping, movies_data, model):
     user_id = user_mapping[USERID]
@@ -78,6 +84,7 @@ def recommend(test_data, user_mapping, reverse_user_mapping, movie_mapping, movi
     recommendations = recommendations.sort_values('predicted_rating', ascending=False)
 
     return recommendations
+
 
 def print_recommendations_for_user(recommendations, reverse_movie_mapping):
     print(f"Recommendations for you: ")
@@ -110,10 +117,12 @@ def define_model(num_users, num_movies, embedding_dim):
 
     return model
 
-def main():
+
+def five_recommendations_for_user():
     ratings_data, movies_data = load_data()
     ratings_data = prompt_user(movies_data, ratings_data)
-    ratings_data, user_mapping, reverse_user_mapping, movie_mapping, reverse_movie_mapping = preprocess_data(ratings_data)
+    ratings_data, user_mapping, reverse_user_mapping, movie_mapping, reverse_movie_mapping = preprocess_data(
+        ratings_data)
 
     # Split the data into training and testing sets
     train_data, test_data = train_test_split(ratings_data, test_size=0.2, random_state=42)
@@ -135,7 +144,19 @@ def main():
     recommendations = recommend(test_data, user_mapping, reverse_user_mapping, movie_mapping, movies_data, model)
     print_recommendations_for_user(recommendations, reverse_movie_mapping)
 
+
+def main():
+    # menu for user to choose which function to run
+    print("Welcome to the Movie Recommender System!")
+    print("Please choose one of the following options:")
+    print("1. Recommend 5 movies for a user")
+
+    choice = input("Enter your choice: ")
+    if choice == "1":
+        five_recommendations_for_user()
+
     return 0
+
 
 if __name__ == "__main__":
     main()
