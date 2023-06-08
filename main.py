@@ -14,10 +14,10 @@ def load_data():
     return ratings_data, movies_data
 
 
-def prompt_user(movies_data, ratings_data):
+def prompt_user(movies_data, ratings_data, amount):
     # prompt the user to rate 5 random movies from movies_data and save those ratings into a DataFrame
     user_ratings = pd.DataFrame(columns=['userId', 'movieId', 'rating'])
-    for _ in range(5):
+    for _ in range(amount):
         movie_id = np.random.choice(movies_data['movieId'].unique())
         # display movie title
         title = movies_data[movies_data['movieId'] == movie_id]['title'].values[0]
@@ -44,15 +44,30 @@ def preprocess_data(ratings_data):
     return ratings_data, user_mapping, reverse_user_mapping, movie_mapping, reverse_movie_mapping
 
 
-def train(model, train_data):
+def train(model, train_data, epochs):
     # Train the model
-    model.fit([train_data['userId'], train_data['movieId']], train_data['rating'], epochs=10, batch_size=64)
+    model.fit([train_data['userId'], train_data['movieId']], train_data['rating'], epochs=epochs, batch_size=64)
 
 
 def evaluate(model, test_data):
-    # Evaluate the model and print the loss and accuracy values
-    loss, accuracy = model.evaluate([test_data['userId'], test_data['movieId']], test_data['rating'])
-    print(f"Loss: {loss}, accuracy: {accuracy}")
+    user_indices = test_data['userId']
+    movie_indices = test_data['movieId']
+    actual_ratings = test_data['rating']
+
+    # Make predictions using the model
+    predicted_ratings = model.predict([user_indices, movie_indices]).flatten()
+
+    # Round the predicted ratings to the nearest 0.5 value
+    rounded_predicted_ratings = np.round(predicted_ratings * 2) / 2
+
+    # Round the actual ratings to the nearest 0.5 value
+    rounded_actual_ratings = np.round(actual_ratings * 2) / 2
+
+    # Calculate the accuracy by comparing the rounded predicted ratings to the rounded actual ratings
+    accuracy = np.mean(rounded_predicted_ratings == rounded_actual_ratings)
+
+    # Print the accuracy
+    print(f"Accuracy: {accuracy}")
 
 
 def recommend(test_data, user_mapping, reverse_user_mapping, movie_mapping, movies_data, model):
@@ -72,6 +87,8 @@ def recommend(test_data, user_mapping, reverse_user_mapping, movie_mapping, movi
     user_indices = np.full(len(valid_unrated_movie_ids), user_id)
     movie_indices = np.array([movie_mapping[id] for id in valid_unrated_movie_ids])
     predicted_ratings = model.predict([user_indices, movie_indices])
+    # round the predicted ratings to a 0.5 interval (0.5, 1.0, 1.5, ...)
+    predicted_ratings = np.round(predicted_ratings * 2) / 2
 
     # Combine movie IDs, titles, and predicted ratings into a DataFrame
     recommendations = pd.DataFrame({
@@ -90,12 +107,7 @@ def print_recommendations_for_user(recommendations, reverse_movie_mapping):
     print(f"Recommendations for you: ")
     for _, movie in recommendations.head(5).iterrows():
         movie_id = movie['movieId']
-        if movie_id in reverse_movie_mapping:
-            print(
-                f"Movie ID: {reverse_movie_mapping[movie_id]} - Title: {movie['title']} - Genres: {movie['genres']} - Predicted Rating: {movie['predicted_rating']}")
-        else:
-            print(
-                f"Movie ID: {movie_id} - Title: {movie['title']} - Genres: {movie['genres']} - Predicted Rating: {movie['predicted_rating']} (Movie ID not found in mapping)")
+        print(f"Movie ID: {movie_id} - Title: {movie['title']} - Genres: {movie['genres']} - Predicted Rating: {movie['predicted_rating']}")
 
 
 def define_model(num_users, num_movies, embedding_dim):
@@ -113,14 +125,14 @@ def define_model(num_users, num_movies, embedding_dim):
     output = tf.keras.layers.Dense(1)(dense)
 
     model = tf.keras.Model(inputs=[user_input, movie_input], outputs=output)
-    model.compile(optimizer='adam', loss='mean_squared_error', metrics=['accuracy'])
+    model.compile(optimizer='adam', loss='mean_squared_error')
 
     return model
 
 
-def five_recommendations_for_user():
+def five_recommendations_for_user(amount, epochs):
     ratings_data, movies_data = load_data()
-    ratings_data = prompt_user(movies_data, ratings_data)
+    ratings_data = prompt_user(movies_data, ratings_data, amount)
     ratings_data, user_mapping, reverse_user_mapping, movie_mapping, reverse_movie_mapping = preprocess_data(
         ratings_data)
 
@@ -139,21 +151,27 @@ def five_recommendations_for_user():
 
     model = define_model(num_users, num_movies, embedding_dim)
 
-    train(model, train_data)
-    # evaluate(model, test_data)
+    train(model, train_data, epochs)
+    evaluate(model, test_data)
     recommendations = recommend(test_data, user_mapping, reverse_user_mapping, movie_mapping, movies_data, model)
     print_recommendations_for_user(recommendations, reverse_movie_mapping)
 
 
 def main():
     # menu for user to choose which function to run
-    print("Welcome to the Movie Recommender System!")
-    print("Please choose one of the following options:")
-    print("1. Recommend 5 movies for a user")
+    print("Machine Learning - Recomendações de Filmes")
+    print("Experimentos:")
+    print("1. 5 perguntas 5 épocas")
+    print("2. 10 perguntas 10 épocas")
+    print("3. 5 perguntas 30 épocas")
 
     choice = input("Enter your choice: ")
     if choice == "1":
-        five_recommendations_for_user()
+        five_recommendations_for_user(5, 5)
+    elif choice == "2":
+        five_recommendations_for_user(10, 10)
+    elif choice == "3":
+        five_recommendations_for_user(5, 30)
 
     return 0
 
